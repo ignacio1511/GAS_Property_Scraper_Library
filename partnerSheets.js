@@ -2,21 +2,29 @@ function onEdit(e) {
   var range = e.range;
   var sheet = range.getSheet();
   var sheetName = sheet.getName();
-  var sheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-
+  var sheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
+  
   PropertyScraperLibrary.logMessage("Edit detected in column: " + range.getColumn() + ", value: " + range.getValue());
 
+  var statusPartnerColumnIndex = headers.indexOf("Status Partner") + 1;
+  var statusIIColumnIndex = headers.indexOf("Status II (post-visita)") + 1;
+  var commentsPartnerColumnIndex = headers.indexOf("Comments Partner") + 1;
+
+  if (range.getColumn() === statusPartnerColumnIndex || range.getColumn() === statusIIColumnIndex || range.getColumn() === commentsPartnerColumnIndex) {
+    var row = sheet.getRange(range.getRow(), 1, 1, sheet.getLastColumn()).getValues()[0];
+    PropertyScraperLibrary.receiveUpdatesFromPartner(sheetName, {
+      range: range,
+      spreadsheetId: sheetId
+    }, '1DE38jM0Ejb-POfpbDpzkkD7X-bgMNArBkMsryt0UmyU'); // Replace with your actual Master Sheet ID 
+  }
+
   if (sheetName === 'Scraper') {
-    var statusPartnerColumnIndex = headers.indexOf("Status Partner") + 1;
     if (range.getColumn() === statusPartnerColumnIndex) {
       var status = range.getValue();
       if (status === "Aprobado" || status === "Solicitamos visita") {
         PropertyScraperLibrary.logMessage("Triggering moveToProspectos for row: " + range.getRow());
         PropertyScraperLibrary.moveToProspectos(sheetId, range.getRow());
-      } else {
-        var row = sheet.getRange(range.getRow(), 1, 1, sheet.getLastColumn()).getValues()[0];
-        PropertyScraperLibrary.receiveUpdatesFromPartner(row, '1q8VWOBy4gXXq0G7WP6IF9T0d9MKSLgVfxBizeF9wrYA'); // Replace 'master-sheet-id' with the actual ID of your Master Sheet
       }
     }
   } else {

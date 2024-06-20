@@ -264,27 +264,92 @@ function transposeRowWithMatching(row, sourceHeaders, targetHeaders) {
 }
 
 // Function to receive updates from Partner Sheets and send them back to the Master Sheet
-function receiveUpdatesFromPartner(row, masterSheetId) {
-  logMessage("receiveUpdatesFromPartner called with masterSheetId: " + masterSheetId);
-  var masterSheet = SpreadsheetApp.openById(masterSheetId).getSheetByName('spain');
-  var data = masterSheet.getDataRange().getValues();
+function receiveUpdatesFromPartner(sheetName, row, masterSheetId) {
+  const editedRange = row.range;
+  const sheet = editedRange.getSheet();
+  const sourceSpreadsheetId = masterSheetId; // Master Sheet ID passed as argument
+  const sourceSheetName = "spain"; // Name of the source sheet
 
-  // Find the matching row in the Master Sheet to update
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === row[0]) { // Assuming the first column is a unique identifier
-      var range = masterSheet.getRange(i + 1, 1, 1, row.length);
-      range.setValues([row]);
-      logMessage("Row updated in Master Sheet: " + row);
-      break;
+  // Ensure the edit is in one of the target sheets
+  const targetSheetNames = ["Scraper", "Prospectos", "Ofertadas/Reservadas", "Cerradas", "Descartadas"];
+  if (targetSheetNames.includes(sheetName)) {
+    const targetSpreadsheet = SpreadsheetApp.openById(row.spreadsheetId);
+    const targetSheet = targetSpreadsheet.getSheetByName(sheetName);
+    const sourceSpreadsheet = SpreadsheetApp.openById(sourceSpreadsheetId);
+    const sourceSheet = sourceSpreadsheet.getSheetByName(sourceSheetName);
+
+    const targetHeaders = targetSheet.getRange(1, 1, 1, targetSheet.getLastColumn()).getValues()[0];
+    const sourceHeaders = sourceSheet.getRange(1, 1, 1, sourceSheet.getLastColumn()).getValues()[0];
+
+    logMessage(`Target Headers: ${targetHeaders}`);
+    logMessage(`Source Headers: ${sourceHeaders}`);
+
+    const idColumnIndexTarget = targetHeaders.indexOf("Property URL") + 1;
+    const idColumnIndexSource = sourceHeaders.indexOf("Property URL") + 1;
+    const statusPartnerColumnIndexTarget = targetHeaders.indexOf("Status Partner") + 1;
+    const statusPartnerIIColumnIndexTarget = targetHeaders.indexOf("Status II (post-visita)") + 1;
+    const commentsPartnerColumnIndexTarget = targetHeaders.indexOf("Comments Partner") + 1;
+
+    const statusPartnerColumnIndexSource = sourceHeaders.indexOf("Status Partner") + 1;
+    const statusPartnerIIColumnIndexSource = sourceHeaders.indexOf("Status II (post-visita)") + 1;
+    const commentsPartnerColumnIndexSource = sourceHeaders.indexOf("Comments Partner") + 1;
+
+    logMessage(`Indexes - Target: Status Partner: ${statusPartnerColumnIndexTarget}, Status II: ${statusPartnerIIColumnIndexTarget}; Source: Status Partner: ${statusPartnerColumnIndexSource}, Status II: ${statusPartnerIIColumnIndexSource}`);
+    logMessage(`ID Column Index - Target: ${idColumnIndexTarget}, Source: ${idColumnIndexSource}`);
+
+    const rowNum = editedRange.getRow();
+    const colNum = editedRange.getColumn();
+    const id = targetSheet.getRange(rowNum, idColumnIndexTarget).getValue(); // Get the unique ID of the edited row
+    const newValue = editedRange.getValue(); // Get the new value to sync
+
+   logMessage(`Edited ID: ${id}, New Value: ${newValue}`);
+   logMessage(`Column edited: ${colNum}, Status Partner: ${statusPartnerColumnIndexTarget}, Status II: ${statusPartnerIIColumnIndexTarget}`);
+
+    if (!id) {
+      logMessage(`No ID found for row ${rowNum}`);
+      return;
+    }
+
+    // Find the row with the same ID in the source sheet
+    const sourceDataRange = sourceSheet.getDataRange();
+    const sourceValues = sourceDataRange.getValues();
+
+    for (let i = 1; i < sourceValues.length; i++) { // Start from 1 to skip header row
+      if (sourceValues[i][idColumnIndexSource - 1] === id) { // Adjust index for zero-based array
+        logMessage(`Found matching ID at row ${i + 1} in source sheet`);
+        // Determine which column was edited and update the corresponding source sheet column
+        try {
+          if (colNum === statusPartnerColumnIndexTarget) {
+           logMessage(`Updating Status Partner in Source at row ${i + 1}, column ${statusPartnerColumnIndexSource}`);
+            sourceSheet.getRange(i + 1, statusPartnerColumnIndexSource).setValue(newValue); // Update Status Partner
+           logMessage(`Updated Status Partner to ${newValue}`);
+          } else if (colNum === statusPartnerIIColumnIndexTarget) {
+           logMessage(`Updating Status II (post-visita) in Source at row ${i + 1}, column ${statusPartnerIIColumnIndexSource}`);
+            sourceSheet.getRange(i + 1, statusPartnerIIColumnIndexSource).setValue(newValue); // Update Status II (post-visita)
+           logMessage(`Updated Status II (post-visita) to ${newValue}`);
+          } else if (colNum === commentsPartnerColumnIndexTarget) {
+           logMessage(`Updating Comments Partner in Source at row ${i + 1}, column ${commentsPartnerColumnIndexSource}`);
+            sourceSheet.getRange(i + 1, commentsPartnerColumnIndexSource).setValue(newValue); // Update Comments Partner
+           logMessage(`Updated Comments Partner to ${newValue}`);
+          }
+        } catch (error) {
+         logMessage(`Failed to update: ${error.message}`);
+        }
+        break;
+      }
     }
   }
 }
+
+
 
 // Helper function to find a row by ID in a sheet
 function findRowById(sheet, id, idColumnName) {
   logMessage("findRowById called with id: " + id + ", idColumnName: " + idColumnName);
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  logMessage("Headers in findRowById: " + JSON.stringify(headers));
   var idColumnIndex = headers.indexOf(idColumnName) + 1;
+  logMessage("ID Column Index: " + idColumnIndex);
   var data = sheet.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) { // Start from 1 to skip header row
     if (data[i][idColumnIndex - 1] == id) {
