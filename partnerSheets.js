@@ -4,19 +4,40 @@ function onEdit(e) {
   var sheetName = sheet.getName();
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   var sheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
-  
+
   PropertyScraperLibrary.logMessage("Edit detected in column: " + range.getColumn() + ", value: " + range.getValue());
 
   var statusPartnerColumnIndex = headers.indexOf("Status Partner") + 1;
   var statusIIColumnIndex = headers.indexOf("Status II (post-visita)") + 1;
   var commentsPartnerColumnIndex = headers.indexOf("Comments Partner") + 1;
 
-  if (range.getColumn() === statusPartnerColumnIndex || range.getColumn() === statusIIColumnIndex || range.getColumn() === commentsPartnerColumnIndex) {
-    var row = sheet.getRange(range.getRow(), 1, 1, sheet.getLastColumn()).getValues()[0];
-    PropertyScraperLibrary.receiveUpdatesFromPartner(sheetName, {
-      range: range,
-      spreadsheetId: sheetId
-    }, '1DE38jM0Ejb-POfpbDpzkkD7X-bgMNArBkMsryt0UmyU'); // Replace with your actual Master Sheet ID 
+  PropertyScraperLibrary.logMessage("Outside the IF condition ...");
+
+  if (sheetName === "Scraper") {
+    // Row-based structure
+    if (range.getColumn() === statusPartnerColumnIndex || range.getColumn() === statusIIColumnIndex || range.getColumn() === commentsPartnerColumnIndex) {
+      PropertyScraperLibrary.logMessage("Entering the IF condition for Scraper ...");
+      PropertyScraperLibrary.receiveUpdatesFromPartner(sheetName, {
+        range: range,
+        spreadsheetId: sheetId
+      }, '1DE38jM0Ejb-POfpbDpzkkD7X-bgMNArBkMsryt0UmyU');
+      PropertyScraperLibrary.logMessage("Function receiveUpdatesFromPartner executed for Scraper!");
+    }
+  } else {
+    // Column-based structure
+    var headersColumn = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues().flat();
+    var statusPartnerRowIndex = headersColumn.indexOf("Status Partner") + 1;
+    var statusIIRowIndex = headersColumn.indexOf("Status II (post-visita)") + 1;
+    var commentsPartnerRowIndex = headersColumn.indexOf("Comments Partner") + 1;
+
+    if (range.getRow() === statusPartnerRowIndex || range.getRow() === statusIIRowIndex || range.getRow() === commentsPartnerRowIndex) {
+      PropertyScraperLibrary.logMessage("Entering the IF condition for column-based sheet ...");
+      PropertyScraperLibrary.receiveUpdatesFromPartner(sheetName, {
+        range: range,
+        spreadsheetId: sheetId
+      }, '1DE38jM0Ejb-POfpbDpzkkD7X-bgMNArBkMsryt0UmyU');
+      PropertyScraperLibrary.logMessage("Function receiveUpdatesFromPartner executed for column-based sheet!");
+    }
   }
 
   if (sheetName === 'Scraper') {
@@ -28,10 +49,7 @@ function onEdit(e) {
       }
     }
   } else {
-    var headersColumn = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues().flat();
-    var statusIIColumnIndex = headersColumn.indexOf("Status II (post-visita)") + 1;
-
-    if (range.getRow() === statusIIColumnIndex) {
+    if (range.getRow() === statusIIRowIndex) {
       var statusII = range.getValue();
       PropertyScraperLibrary.logMessage("Status II edit detected, status: " + statusII);
       if (sheetName === 'Prospectos') {
