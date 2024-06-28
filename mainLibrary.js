@@ -186,29 +186,81 @@ function moveToProspectos(sheetId, rowIndex, sheetName) {
     transposedRow[originColumnIndex] = ["Scraper"];
   }
 
+  // Get the last column in the "Prospectos" sheet to calculate formulas
   var lastColumn = prospectosSheet.getLastColumn() + 1;
+  var currentColumnLetter = columnToLetter(lastColumn);
+
+  // Add default values and formulas
+  var totalInvestmentColumnIndex = prospectosHeaders.indexOf("Total investment");
+  var rentaAnualColumnIndex = prospectosHeaders.indexOf("Renta anual");
+  var rentaNetaColumnIndex = prospectosHeaders.indexOf("Renta neta");
+  var gastosDeCompraColumnIndex = prospectosHeaders.indexOf("Gastos de compra");
+
+  var itpColumnIndex = prospectosHeaders.indexOf("ITP");
+  var tenantSearchingFeeColumnIndex = prospectosHeaders.indexOf("Tenant Searching Fee");
+  var realEstateFeeColumnIndex = prospectosHeaders.indexOf("Real Estate Agent Fee");
+  var honorariosPhColumnIndex = prospectosHeaders.indexOf("Honorarios PH");
+
+  var ibiColumnIndex = prospectosHeaders.indexOf("IBIs");
+  var comunidadColumnIndex = prospectosHeaders.indexOf("Comunidad");
+  var seguroColumnIndex = prospectosHeaders.indexOf("Seguro");
+  var yieldColumnIndex = prospectosHeaders.indexOf("Yield");
+
+  var prprtyManagementFeeColumnIndex = prospectosHeaders.indexOf("Property Management fee");
+
+  if (totalInvestmentColumnIndex !== -1) {
+    transposedRow[totalInvestmentColumnIndex] = [`=SUM(${currentColumnLetter}26:${currentColumnLetter}33)`];
+  }
+  if (rentaAnualColumnIndex !== -1) {
+    transposedRow[rentaAnualColumnIndex] = [`=${currentColumnLetter}34*12`];
+  }
+  if (rentaNetaColumnIndex !== -1) {
+    transposedRow[rentaNetaColumnIndex] = [`=${currentColumnLetter}34-SUM(${currentColumnLetter}35:${currentColumnLetter}38)`];
+  }
+  if (gastosDeCompraColumnIndex !== -1) {
+    transposedRow[gastosDeCompraColumnIndex] = [1315];
+  }
+
+  transposedRow[ibiColumnIndex] = [150];
+  transposedRow[comunidadColumnIndex] = [360];
+  transposedRow[seguroColumnIndex] = [200];
+  transposedRow[realEstateFeeColumnIndex] = [1210];
+  transposedRow[honorariosPhColumnIndex] = [6000];
+
+  transposedRow[prprtyManagementFeeColumnIndex] = [`=${currentColumnLetter}23*0.04*1.21`];
+  transposedRow[itpColumnIndex] = [`=${currentColumnLetter}26*0.09`];
+  transposedRow[tenantSearchingFeeColumnIndex] = [`=${currentColumnLetter}34*1.21`];
+  transposedRow[yieldColumnIndex] = [`=${currentColumnLetter}24 / ${currentColumnLetter}22`];
+
   var range = prospectosSheet.getRange(1, lastColumn, transposedRow.length, 1);
   range.setValues(transposedRow);
 
   // Optionally, you can remove the row from the original sheet if needed
   sheet.deleteRow(rowIndex);
-  logMessage("Row moved to Prospectos and transposed with Origin set to Scraper");
+  logMessage("Row moved to Prospectos and transposed with Origin set to Scraper and default values/formulas added");
 }
+
+// Function to convert a column index to a letter (e.g., 1 -> A, 2 -> B)
+function columnToLetter(column) {
+  var temp = '';
+  var letter = '';
+  while (column > 0) {
+    temp = (column - 1) % 26;
+    letter = String.fromCharCode(temp + 65) + letter;
+    column = (column - temp - 1) / 26;
+  }
+  return letter;
+}
+
 
 // Function to move a column from "Prospectos" to another sheet within the partner sheets
 function moveColumnToOtherSheets(sheetId, sheetName, columnIndex, targetSheetName) {
   logMessage("moveColumnToOtherSheets called with sheetId: " + sheetId + ", sheetName: " + sheetName + ", columnIndex: " + columnIndex + ", targetSheetName: " + targetSheetName);
   var sheet = SpreadsheetApp.openById(sheetId).getSheetByName(sheetName);
   
-  // Select all values of the column where the edit was made
-  var columnData = sheet.getRange(1, columnIndex, sheet.getLastRow(), 1).getValues();
-  logMessage("Column data fetched: " + JSON.stringify(columnData));
-
-  // Verify if the column data is not empty
-  if (!columnData || columnData.length === 0) {
-    logMessage("Error: Column data is empty or undefined.");
-    return;
-  }
+  // Select the range of the column where the edit was made
+  var columnRange = sheet.getRange(1, columnIndex, sheet.getLastRow(), 1);
+  logMessage("Column range selected: " + columnRange.getA1Notation());
 
   // Move to target sheet
   var targetSheet = SpreadsheetApp.openById(sheetId).getSheetByName(targetSheetName);
@@ -219,32 +271,16 @@ function moveColumnToOtherSheets(sheetId, sheetName, columnIndex, targetSheetNam
 
   var lastColumn = targetSheet.getLastColumn() + 1;
 
-  // Insert the new column into the target sheet in one batch
-  targetSheet.getRange(1, lastColumn, columnData.length, 1).setValues(columnData);
-  logMessage("Inserted column data into target sheet");
+  // Insert the new column into the target sheet in one batch, preserving formulas
+  var targetRange = targetSheet.getRange(1, lastColumn, sheet.getLastRow(), 1);
+  columnRange.copyTo(targetRange);
+  logMessage("Inserted column data with formulas into target sheet");
 
   // Optionally, you can clear the column from the original sheet if needed
-  sheet.getRange(1, columnIndex, sheet.getLastRow(), 1).clearContent();
+  columnRange.clearContent();
   logMessage("Column moved within sheet to " + targetSheetName);
 }
 
-
-// Function to match row values with headers for column-structured sheets
-function matchRowWithHeadersForColumnStructure(row, sourceHeaders, targetHeaders) {
-  logMessage("matchRowWithHeadersForColumnStructure called");
-  var newRow = [];
-  for (var i = 0; i < targetHeaders.length; i++) {
-    var columnName = targetHeaders[i];
-    var sourceIndex = sourceHeaders.indexOf(columnName);
-    if (sourceIndex !== -1) {
-      newRow.push(row[sourceIndex]);
-    } else {
-      newRow.push('');
-    }
-  }
-  logMessage("Row matched with headers: " + JSON.stringify(newRow));
-  return newRow;
-}
 
 // Function to transpose a row with matching column names
 function transposeRowWithMatching(row, sourceHeaders, targetHeaders) {
@@ -263,6 +299,84 @@ function transposeRowWithMatching(row, sourceHeaders, targetHeaders) {
   return transposed;
 }
 
+// Function to match row values with headers for column-structured sheets
+function matchRowWithHeadersForColumnStructure(row, sourceHeaders, targetHeaders) {
+  logMessage("matchRowWithHeadersForColumnStructure called");
+  var newRow = [];
+  for (var i = 0; i < targetHeaders.length; i++) {
+    var columnName = targetHeaders[i];
+    var sourceIndex = sourceHeaders.indexOf(columnName);
+    if (sourceIndex !== -1) {
+      newRow.push(row[sourceIndex]);
+    } else {
+      newRow.push('');
+    }
+  }
+  logMessage("Row matched with headers: " + JSON.stringify(newRow));
+  return newRow;
+}
+
+// Function to move a column within Partner Sheet to the "at_spain" sheet (transposed)
+function moveToAtSpain(partnerSheetId, partnerSheetName, columnIndex, targetSheetId, targetSheetName) {
+  logMessage("moveToAtSpain called with partnerSheetId: " + partnerSheetId + ", partnerSheetName: " + partnerSheetName + ", columnIndex: " + columnIndex);
+  
+  // Open the partner sheet by its ID and name
+  var partnerSheet = SpreadsheetApp.openById(partnerSheetId).getSheetByName(partnerSheetName);
+  if (!partnerSheet) {
+    logMessage("Partner sheet not found: " + partnerSheetName);
+    return;
+  }
+  
+  var columnData = partnerSheet.getRange(1, columnIndex, partnerSheet.getLastRow(), 1).getValues().flat();
+  
+  // Source headers are in the first row
+  var sourceHeaders = partnerSheet.getRange(1, 1, partnerSheet.getLastRow(), 1).getValues().flat();
+
+  
+  
+  // Open the target sheet by its ID and name
+  var targetSheet = SpreadsheetApp.openById(targetSheetId).getSheetByName(targetSheetName);
+  if (!targetSheet) {
+    logMessage("Target sheet not found: " + targetSheetName);
+    return;
+  }
+  
+  var targetHeaders = targetSheet.getRange(1, 1, 1, targetSheet.getLastColumn()).getValues()[0];
+  
+
+  logMessage("columnData " + columnData);
+  logMessage("SOURCE HEADERS (column-based): " + sourceHeaders);
+  logMessage("TARGET HEADERS (row-based): " + targetHeaders);
+
+  var transposedRow = transposeColumnToRow(columnData, sourceHeaders, targetHeaders);
+  
+  logMessage("TRANSPOSED ROW: " + transposedRow);
+
+  var lastRow = targetSheet.getLastRow() + 1;
+  var range = targetSheet.getRange(lastRow, 1, 1, transposedRow.length);
+  range.setValues([transposedRow]);
+  
+  // Optionally, you can clear the column from the original sheet if needed
+  //partnerSheet.getRange(1, columnIndex, partnerSheet.getLastRow(), 1).clearContent();
+  logMessage("Column moved to at_spain and transposed");
+}
+
+// Function to transpose a column to a row with matching headers
+function transposeColumnToRow(columnData, sourceHeaders, targetHeaders) {
+  logMessage("transposeColumnToRow called");
+  var transposedRow = new Array(targetHeaders.length).fill('');
+  for (var i = 0; i < targetHeaders.length; i++) {
+    var header = targetHeaders[i];
+    var sourceIndex = sourceHeaders.indexOf(header);
+    if (sourceIndex !== -1) {
+      transposedRow[i] = columnData[sourceIndex];
+    }
+  }
+  logMessage("Column transposed to row with matching: " + transposedRow);
+  return transposedRow;
+}
+
+
 // Function to receive updates from Partner Sheets and send them back to the Master Sheet
 function receiveUpdatesFromPartner(sheetName, row, masterSheetId) {
   const editedRange = row.range;
@@ -280,12 +394,14 @@ function receiveUpdatesFromPartner(sheetName, row, masterSheetId) {
     targetSheet.getRange(1, 1, targetSheet.getLastRow(), 1).getValues().flat();
   const sourceHeaders = sourceSheet.getRange(1, 1, 1, sourceSheet.getLastColumn()).getValues()[0];
 
-  const idColumnIndexTarget = targetHeaders.indexOf("Property URL");
+  const idColumnIndexTarget = targetHeaders.indexOf("ID");
+  const urlColumnIndexTarget = targetHeaders.indexOf("Property URL");
   const statusPartnerColumnIndexTarget = targetHeaders.indexOf("Status Partner");
   const statusPartnerIIColumnIndexTarget = targetHeaders.indexOf("Status II (post-visita)");
   const commentsPartnerColumnIndexTarget = targetHeaders.indexOf("Comments Partner");
 
-  const idColumnIndexSource = sourceHeaders.indexOf("Property URL");
+  const idColumnIndexSource = sourceHeaders.indexOf("ID");
+  const urlColumnIndexSource = sourceHeaders.indexOf("Property URL");
   const statusPartnerColumnIndexSource = sourceHeaders.indexOf("Status Partner");
   const statusPartnerIIColumnIndexSource = sourceHeaders.indexOf("Status II (post-visita)");
   const commentsPartnerColumnIndexSource = sourceHeaders.indexOf("Comments Partner");
@@ -319,6 +435,11 @@ function receiveUpdatesFromPartner(sheetName, row, masterSheetId) {
           logMessage(`Updating Comments Partner in row ${i + 1}`);
           sourceSheet.getRange(i + 1, commentsPartnerColumnIndexSource + 1).setValue(newValue);
         }
+        // Include the Property URL in the update
+        if (urlColumnIndexTarget !== -1 && urlColumnIndexSource !== -1) {
+          const propertyURL = targetSheet.getRange(rowNum, urlColumnIndexTarget + 1).getValue();
+          sourceSheet.getRange(i + 1, urlColumnIndexSource + 1).setValue(propertyURL);
+        }
         break;
       }
     }
@@ -348,6 +469,11 @@ function receiveUpdatesFromPartner(sheetName, row, masterSheetId) {
           } else if (rowNum === commentsPartnerColumnIndexTarget + 1) {
             logMessage(`Updating Comments Partner in row ${i + 1}`);
             sourceSheet.getRange(i + 1, commentsPartnerColumnIndexSource + 1).setValue(newValue); // Update Comments Partner
+          }
+          // Include the Property URL in the update
+          if (urlColumnIndexTarget !== -1 && urlColumnIndexSource !== -1) {
+            const propertyURL = targetSheet.getRange(urlColumnIndexTarget + 1, colNum).getValue();
+            sourceSheet.getRange(i + 1, urlColumnIndexSource + 1).setValue(propertyURL);
           }
           logMessage(`Updated value to ${newValue}`);
         } catch (error) {
