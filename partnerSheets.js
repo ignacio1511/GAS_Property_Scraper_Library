@@ -45,7 +45,11 @@ function onEdit(e) {
       var status = range.getValue();
       if (status === "Aprobado" || status === "Solicitamos visita") {
         PropertyScraperLibrary.logMessage("Triggering moveToProspectos for row: " + range.getRow());
-        PropertyScraperLibrary.moveToProspectos(sheetId, range.getRow());
+        PropertyScraperLibrary.moveToProspectos(sheetId, range.getRow(), 'Prospectos');
+      }
+      else if(status === "Descartado"){
+        PropertyScraperLibrary.logMessage("Triggering moveToProspectos or Discarded")
+        PropertyScraperLibrary.moveToProspectos(sheetId, range.getRow(), 'Descartadas');
       }
     }
   } else {
@@ -67,6 +71,24 @@ function onEdit(e) {
         } else if (statusII === "Descartado") {
           PropertyScraperLibrary.logMessage("Triggering moveColumnToOtherSheets to DESCARTADAS for column: " + range.getColumn());
           PropertyScraperLibrary.moveColumnToOtherSheets(sheetId, sheetName, range.getColumn(), "Descartadas");
+        }
+      }
+      else if (sheetName === 'Cerradas') {
+        if (statusII === "Descartado") {
+          PropertyScraperLibrary.logMessage("Triggering moveColumnToOtherSheets to CERRADAS for column: " + range.getColumn());
+          PropertyScraperLibrary.moveColumnToOtherSheets(sheetId, sheetName, range.getColumn(), "Descartadas");
+        } else if (statusII === "Ofertado" || statusII === "Reservado") {
+          PropertyScraperLibrary.logMessage("Triggering moveColumnToOtherSheets to OFERTADAS/RESERVADAS for column: " + range.getColumn());
+          PropertyScraperLibrary.moveColumnToOtherSheets(sheetId, sheetName, range.getColumn(), "Ofertadas/Reservadas");
+        }
+      }
+      else if (sheetName === 'Descartadas') {
+        if (statusII === "Cerrado") {
+          PropertyScraperLibrary.logMessage("Triggering moveColumnToOtherSheets to CERRADAS for column: " + range.getColumn());
+          PropertyScraperLibrary.moveColumnToOtherSheets(sheetId, sheetName, range.getColumn(), "Cerradas");
+        } else if (statusII === "Ofertado" || statusII === "Reservado") {
+          PropertyScraperLibrary.logMessage("Triggering moveColumnToOtherSheets to OFERTADAS/RESERVADAS for column: " + range.getColumn());
+          PropertyScraperLibrary.moveColumnToOtherSheets(sheetId, sheetName, range.getColumn(), "Ofertadas/Reservadas");
         }
       }
     }

@@ -170,13 +170,13 @@ function createNewRow(data, headers, targetSheet) {
 }
 
 // Function to move a row within Partner Sheet to the "Prospectos" sheet (transposed)
-function moveToProspectos(sheetId, rowIndex) {
+function moveToProspectos(sheetId, rowIndex, sheetName) {
   logMessage("moveToProspectos called with sheetId: " + sheetId + ", rowIndex: " + rowIndex);
   var sheet = SpreadsheetApp.openById(sheetId).getActiveSheet();
   var row = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
 
   // Move to "Prospectos" sheet
-  var prospectosSheet = SpreadsheetApp.openById(sheetId).getSheetByName('Prospectos');
+  var prospectosSheet = SpreadsheetApp.openById(sheetId).getSheetByName(sheetName);
   var prospectosHeaders = prospectosSheet.getRange(1, 1, prospectosSheet.getLastRow(), 1).getValues().flat();
   var transposedRow = transposeRowWithMatching(row, sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0], prospectosHeaders);
   
@@ -227,6 +227,7 @@ function moveColumnToOtherSheets(sheetId, sheetName, columnIndex, targetSheetNam
   sheet.getRange(1, columnIndex, sheet.getLastRow(), 1).clearContent();
   logMessage("Column moved within sheet to " + targetSheetName);
 }
+
 
 // Function to match row values with headers for column-structured sheets
 function matchRowWithHeadersForColumnStructure(row, sourceHeaders, targetHeaders) {
@@ -358,7 +359,6 @@ function receiveUpdatesFromPartner(sheetName, row, masterSheetId) {
   }
 }
 
-
 // Helper function to find a row by ID in a sheet
 function findRowById(sheet, id, idColumnName) {
   logMessage("findRowById called with id: " + id + ", idColumnName: " + idColumnName);
@@ -375,4 +375,10 @@ function findRowById(sheet, id, idColumnName) {
   }
   logMessage("Row not found with id: " + id);
   return -1;
+}
+
+function generateId(){
+  id = 'ID-' + Math.random().toString(36).substring(2, 11);
+  Logger.log("id ...      " + id)
+  return id 
 }
